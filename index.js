@@ -21,7 +21,8 @@ function partitionBundle(b, opts) {
 
   opts = normalizeOptions(b, opts);
   var shortIDLabels = opts.shortIDLabels = {};
-  opts.loadjsPaths = [];
+  opts.bundlePaths = [];
+  opts.prodBundlePaths = [];
 
   var rOpts = {
     basedir: opts.mapDir,
@@ -35,20 +36,23 @@ function partitionBundle(b, opts) {
         mod = {
           require: mod,
           expose: mod,
-          loadjsPath: file
+          bundlePath: file,
+          prodBundlePath: file
         };
       } else {
         mod = {
           require: mod.require,
           expose: mod.expose || mod.require,
-          loadjsPath: mod.loadjsPath || file
+          bundlePath: mod.bundlePath || file,
+          prodBundlePath: mod.prodBundlePath || file
         };
       }
 
       var id = bresolve.sync(mod.require, rOpts);
       shortIDLabels[id] = mod.expose;
       modules[i] = id;
-      opts.loadjsPaths.push(mod.loadjsPath);
+      opts.bundlePaths.push(mod.bundlePath);
+      opts.prodBundlePaths.push(mod.prodBundlePath);
       b.require(id, {entry: true});
     });
   });
@@ -89,11 +93,14 @@ function installBundlePipeline(pipeline, opts) {
         prelude: file == firstFile,
         firstFile: firstFile,
         files: Object.keys(opts.map),
-        loadjsPaths: opts.loadjsPaths,
+        bundlePaths: opts.bundlePaths,
+        prodBundlePaths: opts.prodBundlePaths,
         map: modulesByID,
         labels: shortIDLabels,
         url: opts.url,
-        main: opts.main
+        main: opts.main,
+        prodHost: opts.prodHost,
+        prodUrl: opts.prodUrl
       }))
       .pipe(ws);
 
@@ -322,12 +329,23 @@ function wrap(opts) {
     if (first && opts.prelude) {
 
       if (opts.url) {
-        stream.push(new Buffer('\nloadjs.url = "' + opts.url + '";'));
+        if (!opts.prodHost) {
+          throw new Error('Need to specify production hostname');
+        }
+
+        stream.push(new Buffer('\nloadjs.isProd = window.location.hostname === "' + opts.prodHost + '";'));
+        stream.push(new Buffer('\nloadjs.url = loadjs.isProd ? "' + opts.prodUrl + '" : "' + opts.url + '";'));
       }
 
-      stream.push(new Buffer('\nloadjs.files = [' + opts.loadjsPaths.map(function(file) {
+      stream.push(new Buffer('\nloadjs.bundlePaths = [' + opts.bundlePaths.map(function(file) {
         return '"' + file + '"';
       }).join(',') + ']'));
+
+      stream.push(new Buffer('\nloadjs.prodBundlePaths = [' + opts.prodBundlePaths.map(function(file) {
+        return '"' + file + '"';
+      }).join(',') + ']'));
+
+      stream.push(new Buffer('\nloadjs.files = loadjs.isProd ? loadjs.prodBundlePaths : loadjs.bundlePaths;'));
 
       stream.push(new Buffer([
         '\nloadjs.map = ',
