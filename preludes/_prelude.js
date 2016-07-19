@@ -9,8 +9,11 @@ var indexOf    = require('../lib/indexOf');
 var cache = {};
 var modules = {};
 
+var DEF = 0;
+var DEPS = 1;
+
 function __define(id, def, deps) {
-  modules[id] = {def: def, deps: deps};
+  modules[id] = [def, deps];
 }
 
 function __require(id) {
@@ -20,9 +23,9 @@ function __require(id) {
     var exports = module.exports = {};
     if (modules[id]) {
       var _req = function(_id) {
-        return __require(modules[id].deps[_id]).exports;
+        return __require(modules[id][DEPS][_id]).exports;
       };
-      modules[id].def.call(exports, _req, module, exports, __require, modules, cache);
+      modules[id][DEF].call(exports, _req, module, exports, _req, modules, cache);
     } else {
       var err = new Error('Cannot find module \'' + id + '\'');
       err.code = 'MODULE_NOT_FOUND';
