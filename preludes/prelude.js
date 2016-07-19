@@ -146,7 +146,7 @@ function __require(id) {
       var _req = function(_id) {
         return __require(modules[id].deps[_id]).exports;
       };
-      modules[id].def.call(exports, _req, module, exports);
+      modules[id].def.call(exports, _req, module, exports, __require, modules, cache);
     } else {
       var err = new Error('Cannot find module \'' + id + '\'');
       err.code = 'MODULE_NOT_FOUND';
