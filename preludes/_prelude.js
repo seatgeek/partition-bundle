@@ -6,6 +6,10 @@ var fold       = require('../lib/fold');
 var append     = require('../lib/append');
 var indexOf    = require('../lib/indexOf');
 
+// This is the standard higher order function in browserify for bundling.
+// partition-bundle doesn't seem to have a good alternative for it, so include
+// it here. It needs to be passed into modules so things like Webworkify work.
+var bundleFn = function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o< r.length;o++)s(r[o]);return s};
 var cache = {};
 var modules = {};
 
@@ -25,7 +29,7 @@ function __require(id) {
       var _req = function(_id) {
         return __require(modules[id][DEPS][_id]).exports;
       };
-      modules[id][DEF].call(exports, _req, module, exports, _req, modules, cache);
+      modules[id][DEF].call(exports, _req, module, exports, bundleFn, modules, cache);
     } else {
       var err = new Error('Cannot find module \'' + id + '\'');
       err.code = 'MODULE_NOT_FOUND';
